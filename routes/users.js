@@ -1,77 +1,63 @@
-const express = require('express')
-const router = express.Router()
-const User = require('../models/user')
+if (process.env.NODE_ENV !== "production") require("dotenv").config({ path: "./development.env" });
+var mongoose = require("mongoose");
+var User = require("../models/user");
+const express = require("express");
+const router = express.Router();
 
-//Getting all
-router.get('/', async (req, res) => {
+mongoose.connect(process.env.MONGO_URL, function (err) {
+    if (err) throw err;
+    console.log("Successfully connected to MongoDB");
+});
+
+//General route
+router.get("/", async (req, res) => {
     try {
-        const users = await User.find()
-        res.json(users)
+        res.json({ message: "API Route working." });
     } catch (err) {
-        res.status(500).json({ message: err.message })
+        res.status(500).json({ message: err.message });
     }
-})
+});
 
-//Getting One
-router.get('/:id', getUser, (req, res) => {
-    res.json(res.user)
-})
-
-//Creating one
-router.post('/', async (req, res) => {
-    const user = new User({
-        name: req.body.name
-    })
-
+//Logging in route
+router.post("/login", (req, res) => {
     try {
-        const newUser = await user.save()
-        res.status(201).json(newUser)
-    } catch (err) {
-        res.status(400).json({ message: err.message })
+        if (!req.body || !req.body.username || !req.body.password) throw new Error("Missing username or password");
+        console.log(req.body);
+        User.findOne({ username: req.body.username }, function (err, user) {
+            if (err || !user) return res.status(500).json({ message: "Invalid username or password" });
+            // test a matching password
+            user.comparePassword(req.body.password, function (err, isMatch) {
+                if (err) return res.status(500).json({ message: "Error while logging in: " + err });
+                console.log("Password match?:", isMatch);
+                console.log(user);
+                res.status(201).json({ message: "Successfully logged in.", user: user });
+            });
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
     }
+});
 
-})
-
-//Updating one; just updates info that gets passed
-router.patch('/:id', getUser, async (req, res) => {
-    if (req.body.name != null) {
-        res.user.name = req.body.name
-    }
+//Signing up route
+router.post("/signup", async (req, res) => {
     try {
-        const updatedUser = await res.user.save()  
-        res.json(updatedUser)
+        if (!req.body || !req.body.username || !req.body.password) throw new Error("Missing username or password");
+        if (req.body.username.length < 3) throw new Error("Username must be at least 3 characters long");
+        if (req.body.password.length < 9) throw new Error("Password must be at least 9 characters long");
+        // create a user a new user
+        var newUser = new User({
+            username: req.body.username,
+            password: req.body.password,
+        });
+
+        // save the user to database
+        await newUser.save((err) => {
+            if (err) throw new Error(err);
+        });
+        res.status(201).json({ message: "User created." });
     } catch (err) {
-        res.status(400).json({ message: err.nessage })
+        res.status(400).json({ message: err.message });
     }
-})
+});
 
-//Deleting one
-router.delete('/:id', getUser, async (req, res) => {
-    try {
-        await res.user.deleteOne()
-        res.json({ message: 'Deleted Subscriber' })
-    } catch (err) {
-        res.status(500).json({ message: err.message })
-    }
-
-})
-
-async function getUser(req, res, next) {
-    let user
-    try {
-        user = await User.findById(req.params.id)
-        if (user == null) {
-            return res.status(404).json ({ message: "Cannot find user"})
-        } 
-    } catch (err) {
-        return res.status(500).json({ message: err.message })
-    }
-
-    res.user = user
-    next()
-}
-
-
-
-
-module.exports = router 
+module.exports = router;
