@@ -8,4 +8,8 @@ app.use(express.json());
 const usersRouter = require("./routes/users");
 app.use("/users", usersRouter);
 
+app.get("/", (req, res) => {
+    res.send("API Route works.");
+});
+
 app.listen(3000, () => console.log("Server started"));
