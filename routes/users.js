@@ -21,7 +21,9 @@ router.get("/", async (req, res) => {
 //Logging in route
 router.post("/login", (req, res) => {
     try {
+        console.log(req.body);
         if (!req.body || !req.body.username || !req.body.password) return res.status(400).json({ message: "Missing username or password" });
+        if (!/\S+@\S+\.\S+/.test(req.body.username)) return res.status(400).json({ message: "Username must be a valid email address" });
         User.findOne({ username: req.body.username }, (err, user) => {
             if (err || !user) return res.status(400).json({ message: "Invalid username or password" });
             // test a matching password
@@ -29,7 +31,9 @@ router.post("/login", (req, res) => {
                 if (err) return res.status(400).json({ message: "Error while logging in: " + err.message });
                 if (!isMatch) return res.status(400).json({ message: "Invalid username or password" });
                 req.session.loggedIn = true;
+                delete user.password;
                 req.session.user = user;
+                console.log(req.sessionID);
                 res.status(200).json({ message: "Successfully logged in.", user: user });
             });
         });
@@ -78,6 +82,7 @@ router.post("/logout", async (req, res) => {
 //Get user route
 router.get("/info", async (req, res) => {
     try {
+        console.log(req.sessionID);
         if (!req.session.loggedIn) return res.status(400).json({ message: "Unauthorized access" });
         User.findOne({ username: req.session.user.username }, (err, user) => {
             if (err || !user) return res.status(400).json({ message: "User not found" });
