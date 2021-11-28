@@ -13,10 +13,13 @@
         "bcrypt": "^5.0.1",
         "cookie-parser": "^1.4.6",
         "cors": "^2.8.5",
+        "creditcard-generator": "^0.0.7",
         "express": "^4.17.1",
         "express-session": "^1.17.2",
+        "moment": "^2.29.1",
         "mongodb": "^4.1.4",
-        "mongoose": "^6.0.12"
+        "mongoose": "^6.0.12",
+        "stripe": "^8.191.0"
     },
     "devDependencies": {
         "dotenv": "^10.0.0",

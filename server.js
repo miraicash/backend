@@ -1,5 +1,6 @@
 if (process.env.NODE_ENV !== "production") require("dotenv").config({ path: "./development.env" });
 const express = require("express");
+var mongoose = require("mongoose");
 const cookieParser = require("cookie-parser");
 const session = require("express-session");
 var cors = require("cors");
@@ -21,6 +22,11 @@ app.use(
     })
 );
 
+mongoose.connect(process.env.MONGO_URL, function (err) {
+    if (err) throw err;
+    console.log("Successfully connected to MongoDB");
+});
+
 app.get("/", (req, res) => {
     try {
         res.json({ message: "API Route working." });
@@ -30,7 +36,9 @@ app.get("/", (req, res) => {
 });
 
 const usersRouter = require("./routes/users");
+const paymentsRouter = require("./routes/payments");
 app.use("/users", usersRouter);
+app.use("/payments", paymentsRouter);
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
