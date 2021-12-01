@@ -1,18 +1,12 @@
 if (process.env.NODE_ENV !== "production") require("dotenv").config({ path: "./development.env" });
-var mongoose = require("mongoose");
 var User = require("../models/user");
 const express = require("express");
 const router = express.Router();
 
-mongoose.connect(process.env.MONGO_URL, function (err) {
-    if (err) throw err;
-    console.log("Successfully connected to MongoDB");
-});
-
 //General route
 router.get("/", async (req, res) => {
     try {
-        res.json({ message: "API Route working... Logged in status: " + req.session.loggedIn ? req.session.user.username : "No session" });
+        res.json({ message: `Users API Route working... Logged in status: ${req.session.loggedIn ? req.session.user.username : "No session"}` });
     } catch (err) {
         res.status(400).json({ message: err.message });
     }
@@ -53,15 +47,31 @@ router.post("/signup", async (req, res) => {
         var newUser = new User({
             username: req.body.username,
             password: req.body.password,
+            transactions: {
+                cash: [],
+                crypto: [],
+            },
+            wallet: {
+                // Use the default generated values from the user.js model
+                card: {
+                    number: undefined,
+                    cvv: undefined,
+                    expiry: undefined,
+                },
+                balance: {
+                    cash: undefined,
+                    crypto: undefined,
+                },
+            },
         });
 
         // save the user to database
         await newUser.save((err) => {
-            if (err) return res.status(400).json({ message: "Error saving user to database: " + err.message });
+            if (err) throw new Error("Error saving user to database: " + err.message);
         });
         req.session.loggedIn = true;
         req.session.user = newUser;
-        res.status(200).json({ message: "User created.", user: newUser });
+        res.status(200).json({ message: "User created.", username: newUser.username });
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
