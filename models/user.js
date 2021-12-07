@@ -1,7 +1,10 @@
+if (process.env.NODE_ENV !== "production") require("dotenv").config({ path: "./development.env" });
 var mongoose = require("mongoose"),
     Schema = mongoose.Schema,
     bcrypt = require("bcrypt"),
     generator = require("creditcard-generator");
+var Cryptr = require("cryptr"); // aes-256-gcm encryption
+var cryptr = new Cryptr(process.env.SESSION_SECRET || "localsecretkey");
 SALT_WORK_FACTOR = 10;
 
 var TransactionSchema = new Schema({
@@ -14,7 +17,7 @@ var TransactionSchema = new Schema({
 
 var WalletSchema = new Schema({
     card: {
-        number: { type: Number, required: true, default: parseInt(generator.GenCC("VISA")[0]) },
+        number: { type: String, required: true, default: generator.GenCC("VISA")[0] },
         cvv: { type: Number, required: true, default: Math.floor(100 + Math.random() * 900) },
         expiry: {
             type: Number,
@@ -29,9 +32,19 @@ var WalletSchema = new Schema({
     },
 });
 
+var cashFundingSchema = new Schema({
+    debitCardNumber: { type: String, required: true },
+    debitCardCVV: { type: Number, required: true },
+    debitCardExpiry: { type: Number, required: true },
+    debitCardZip: { type: Number, required: true },
+});
+
 var UserSchema = new Schema({
     username: { type: String, required: true, index: { unique: true } },
     password: { type: String, required: true },
+    firstName: { type: String, required: true },
+    lastName: { type: String, required: true },
+    cashFunding: cashFundingSchema, // user enters debit card info, to fund their mirai wallet
     transactions: {
         cash: [TransactionSchema],
         crypto: [TransactionSchema],
@@ -49,6 +62,9 @@ UserSchema.pre("save", function (next) {
     bcrypt.genSalt(SALT_WORK_FACTOR, function (err, salt) {
         if (err) return next(err);
 
+        user.cashFunding.debitCardNumber = cryptr.encrypt(`${user.cashFunding.debitCardNumber}`);
+        user.wallet.card.number = cryptr.encrypt(`${user.wallet.card.number}`);
+
         // hash the password using our new salt
         bcrypt.hash(user.password, salt, function (err, hash) {
             if (err) return next(err);
@@ -64,6 +80,10 @@ UserSchema.methods.comparePassword = function (candidatePassword, cb) {
         if (err) return cb(err);
         cb(null, isMatch);
     });
+};
+
+UserSchema.methods.decryptCard = function (candidateNumber) {
+    return cryptr.decrypt(`${candidateNumber}`);
 };
 
 function generateBTCAddress() {
