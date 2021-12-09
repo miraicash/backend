@@ -20,6 +20,7 @@ router.post("/deposit", async (req, res) => {
         if (!req.session.loggedIn) return res.status(400).json({ message: "Unauthorized access" });
         let { amount, currency } = req.body;
         amount = parseFloat(amount);
+        if (amount <= 0) return res.status(400).json({ message: "Amount must be greater than 0" });
         if (currency === "cash") {
             var doc = await User.findOneAndUpdate(
                 { username: req.session.user.username },
@@ -68,6 +69,7 @@ router.post("/withdraw", async (req, res) => {
         if (!req.session.loggedIn) return res.status(400).json({ message: "Unauthorized access" });
         let { amount, currency } = req.body;
         amount = parseFloat(amount);
+        if (amount <= 0) return res.status(400).json({ message: "Amount must be greater than 0" });
         var doc = await User.find({ username: req.session.user.username }).exec();
         if (currency === "cash") {
             if (doc[0].wallet.balance.cash < amount) return res.status(400).json({ message: "Insufficient funds" });
