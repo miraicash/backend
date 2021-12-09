@@ -34,9 +34,9 @@ var WalletSchema = new Schema({
 
 var cashFundingSchema = new Schema({
     debitCardNumber: { type: String, required: true },
-    debitCardCVV: { type: Number, required: true },
-    debitCardExpiry: { type: Number, required: true },
-    debitCardZip: { type: Number, required: true },
+    debitCardCVV: { type: String, required: true },
+    debitCardExpiry: { type: String, required: true },
+    debitCardZip: { type: String, required: true },
 });
 
 var UserSchema = new Schema({
@@ -55,15 +55,19 @@ var UserSchema = new Schema({
 UserSchema.pre("save", function (next) {
     var user = this;
 
+    if (user.isModified("cashFunding.debitCardNumber")) {
+        user.cashFunding.debitCardNumber = cryptr.encrypt(`${user.cashFunding.debitCardNumber}`);
+    }
+    if (user.isModified("wallet.card.number")) {
+        user.wallet.card.number = cryptr.encrypt(`${user.wallet.card.number}`);
+    }
+
     // only hash the password if it has been modified (or is new)
     if (!user.isModified("password")) return next();
 
     // generate a salt
     bcrypt.genSalt(SALT_WORK_FACTOR, function (err, salt) {
         if (err) return next(err);
-
-        user.cashFunding.debitCardNumber = cryptr.encrypt(`${user.cashFunding.debitCardNumber}`);
-        user.wallet.card.number = cryptr.encrypt(`${user.wallet.card.number}`);
 
         // hash the password using our new salt
         bcrypt.hash(user.password, salt, function (err, hash) {
