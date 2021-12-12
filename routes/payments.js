@@ -5,6 +5,7 @@ var User = require("../models/user");
 const express = require("express");
 const router = express.Router();
 const moment = require("moment");
+const fetch = require("node-fetch");
 
 router.get("/", async (req, res) => {
     try {
@@ -189,6 +190,82 @@ router.post("/send", async (req, res) => {
             return res.status(400).json({ message: "Invalid currency" });
         }
         return res.status(200).json({ message: "Send successful" });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+//Convert cash to crypto
+router.post("/convert", async (req, res) => {
+    try {
+        if (!req.session.loggedIn) return res.status(400).json({ message: "Unauthorized access" });
+        let { amountFrom, amountTo, convertFrom, convertTo } = req.body;
+        amountFrom = parseFloat(amountFrom);
+        amountTo = parseFloat(amountTo);
+        if (convertFrom === convertTo) return res.status(400).json({ message: "Invalid conversion" });
+        var doc = await User.find({ username: req.session.user.username }).exec();
+        if (convertFrom === "cash") {
+            if (doc[0].wallet.balance.cash < amountFrom) return res.status(400).json({ message: "Insufficient funds" });
+            await User.findOneAndUpdate(
+                { username: req.session.user.username },
+                {
+                    $inc: { "wallet.balance.cash": -amountFrom, "wallet.balance.crypto": amountTo },
+                    $push: {
+                        "transactions.cash": {
+                            id: parseFloat(performance.now().toString().replace(".", "")),
+                            name: "Convert",
+                            date: moment().format("MM/DD/YYYY hh:mm a"),
+                            type: "Outgoing",
+                            amount: amountFrom,
+                        },
+                        "transactions.crypto": {
+                            id: parseFloat(performance.now().toString().replace(".", "")),
+                            name: "Convert",
+                            date: moment().format("MM/DD/YYYY hh:mm a"),
+                            type: "Incoming",
+                            amount: amountTo,
+                        },
+                    },
+                }
+            );
+        } else if (convertFrom === "crypto") {
+            if (doc[0].wallet.balance.crypto < amountFrom) return res.status(400).json({ message: "Insufficient funds" });
+            await User.findOneAndUpdate(
+                { username: req.session.user.username },
+                {
+                    $inc: { "wallet.balance.crypto": -amountFrom, "wallet.balance.cash": amountTo },
+                    $push: {
+                        "transactions.crypto": {
+                            id: parseFloat(performance.now().toString().replace(".", "")),
+                            name: "Convert",
+                            date: moment().format("MM/DD/YYYY hh:mm a"),
+                            type: "Outgoing",
+                            amount: amountFrom,
+                        },
+                        "transactions.cash": {
+                            id: parseFloat(performance.now().toString().replace(".", "")),
+                            name: "Convert",
+                            date: moment().format("MM/DD/YYYY hh:mm a"),
+                            type: "Incoming",
+                            amount: amountTo,
+                        },
+                    },
+                }
+            );
+        } else {
+            return res.status(400).json({ message: "Invalid currency" });
+        }
+        return res.status(200).json({ message: "Convert successful" });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// HTTPS wrapper for api call
+router.get("/rates", async (req, res) => {
+    try {
+        let prices = await fetch("http://api.exchangeratesapi.io/v1/latest?access_key=6c96fb0c3d6fdca88c7478847c9b1796");
+        let data = await prices.json();
+        res.status(200).json({ data });
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
