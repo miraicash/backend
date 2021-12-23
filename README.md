@@ -1,5 +1,5 @@
 
-# Mirai.cash - Web Based Mobile Wallet (Frontend)
+# Mirai.cash - Web Based Mobile Wallet (Backend)
 
 Our project, Mirai, was developed to provide our users an easy to use, beautifully designed, and security focused experience. Mirai allows users to manage their regular currency like United States Dollars as well as their cryptocurrencies such as Bitcoin.
 ## Authors
